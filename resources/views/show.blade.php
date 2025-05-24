@@ -4,13 +4,13 @@
     if (Hls.isSupported()) {
         var video = document.getElementById('video');
         var hls = new Hls();
-        hls.loadSource(' http://localhost:3000/stream/okaygotaxi-yhpdfado4.m3u8');
+        hls.loadSource('http://localhost:3000/stream/okaygotaxi-yhpdfado4.m3u8'); // Bo'sh joylarni olib tashlash
         hls.attachMedia(video);
         hls.on(Hls.Events.ERROR, function (event, data) {
             console.error("HLS.js error:", data);
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = ' http://localhost:3000/stream/okaygotaxi-yhpdfado4.m3u8';
+        video.src = 'http://localhost:3000/stream/okaygotaxi-yhpdfado4.m3u8'; // Bo'sh joylarni olib tashlash
         video.play();
     }
 </script>
