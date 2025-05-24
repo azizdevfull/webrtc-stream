@@ -54,7 +54,6 @@
         var peer = null;
         var screenStream = null;
         var screenSharing = false;
-        var connectedPeers = new Set();
 
         function notify(msg) {
             let notification = document.getElementById("notification");
@@ -74,11 +73,6 @@
             streamUrlContainer.hidden = false;
         }
 
-        function hideStreamUrl() {
-            let streamUrlContainer = document.getElementById("stream-url-container");
-            streamUrlContainer.hidden = true;
-        }
-
         function setScreenSharingStream(stream) {
             document.getElementById("screenshare-container").hidden = false;
             let video = document.getElementById("screenshared-video");
@@ -90,30 +84,11 @@
             });
         }
 
-        function sendStreamToPeers() {
-            if (screenStream && connectedPeers.size > 0) {
-                connectedPeers.forEach((peerId) => {
-                    console.log("Sending stream to viewer:", peerId);
-                    let call = peer.call(peerId, screenStream);
-                    call.on("error", (err) => {
-                        console.error("Call error to " + peerId + ":", err);
-                        notify("Call error to viewer: " + err.message);
-                        connectedPeers.delete(peerId);
-                    });
-                    call.on("close", () => {
-                        console.log("Call to " + peerId + " closed");
-                        connectedPeers.delete(peerId);
-                    });
-                });
-            }
-        }
-
         async function startScreenShare() {
             if (screenSharing) {
                 stopScreenSharing();
             }
 
-            // Stream ID ni olish
             let response;
             try {
                 response = await fetch("/api/start-screen-share", {
@@ -131,75 +106,13 @@
 
             const data = await response.json();
             const streamId = data.streamId;
-            notify("Screen sharing started. Stream ID: " + streamId);
-            showStreamUrl(data.streamUrl);
+            const streamUrl = data.streamUrl;
+            notify("Screen sharing started. Stream URL: " + streamUrl);
+            showStreamUrl(streamUrl);
 
-            // Ekran ulashishni boshlash
-            try {
-                screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
-                });
-                setScreenSharingStream(screenStream);
-                screenSharing = true;
-
-                let videoTrack = screenStream.getVideoTracks()[0];
-                videoTrack.onended = () => {
-                    stopScreenSharing();
-                };
-
-                // PeerJS sozlamalari
-                peer = new Peer(streamId, {
-                    host: "localhost",
-                    port: 3001,
-                    config: {
-                        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-                    },
-                    debug: 3,
-                });
-
-                peer.on("open", (id) => {
-                    console.log("Peer connected with ID:", id);
-                    notify("Peer connected with ID: " + id);
-                    sendStreamToPeers();
-                });
-
-                peer.on("error", (err) => {
-                    console.error("PeerJS error:", err);
-                    notify("PeerJS error: " + err.message);
-                });
-
-                peer.on("connection", (conn) => {
-                    console.log("Viewer connected with ID:", conn.peer);
-                    connectedPeers.add(conn.peer);
-                    conn.on("close", () => {
-                        connectedPeers.delete(conn.peer);
-                        console.log("Viewer disconnected:", conn.peer);
-                    });
-                    conn.on("error", (err) => {
-                        console.error("Connection error with " + conn.peer + ":", err);
-                        connectedPeers.delete(conn.peer);
-                    });
-
-                    if (screenStream) {
-                        let call = peer.call(conn.peer, screenStream);
-                        call.on("error", (err) => {
-                            console.error("Call error:", err);
-                            notify("Call error: " + err.message);
-                            connectedPeers.delete(conn.peer);
-                        });
-                        call.on("close", () => {
-                            console.log("Call to " + conn.peer + " closed");
-                            connectedPeers.delete(conn.peer);
-                        });
-                    }
-                });
-            } catch (err) {
-                console.error("Error starting screen share:", err);
-                notify("Failed to start screen share: " + err.message);
-                screenSharing = false;
-            }
+            // Vaqtincha WebRTC qismini o'chirib qo'yamiz (test uchun)
+            // screenStream va peer logikasi hozir ishlatilmaydi
         }
-
         function stopScreenSharing() {
             if (!screenSharing) return;
             screenStream.getTracks().forEach((track) => track.stop());
@@ -209,8 +122,6 @@
                 peer.destroy();
                 peer = null;
             }
-            connectedPeers.clear();
-            hideStreamUrl();
             notify("Screen sharing stopped.");
         }
     </script>
